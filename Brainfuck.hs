@@ -232,8 +232,8 @@ parseBrainfuck source = BFSource $ map toBF source
             toBF ']' = LoopR
             toBF  c  = Comment c
 
-bf2tape :: [BrainfuckCommand] -> BrainfuckTape
-bf2tape (b:bs) = Tape [] b bs
+bf2tape :: BrainfuckSource -> BrainfuckTape
+bf2tape (BFSource (b:bs)) = Tape [] b bs
 
 
 runBrainfuck :: BrainfuckTape -> IO ()
@@ -271,13 +271,17 @@ runBrainfuck = run emptyTape
             -- The first parameter ("b" for balance) retains the current bracket
             -- balance to find the matching partner.
             seekLoopR 1 tape source@(Tape _ LoopR _) = step tape source
-            seekLoopR b tape source@(Tape _ LoopR _) = seekLoopR (b-1) tape (focusRightL source)
-            seekLoopR b tape source@(Tape _ LoopL _) = seekLoopR (b+1) tape (focusRightL source)
-            seekLoopR b tape source = seekLoopR b tape (focusRightL source)
+            seekLoopR !b tape source@(Tape _ cmd _) =
+                  let b' = case cmd of LoopR -> b-1
+                                       LoopL -> b+1
+                                       _     -> b
+                  in  seekLoopR b' tape (focusRightL source)
 
             -- Like seekLoopR, but in the other direction.
             seekLoopL 1 tape source@(Tape _ LoopL _) = step tape source
-            seekLoopL b tape source@(Tape _ LoopR _) = seekLoopL (b+1) tape (focusLeftL source)
-            seekLoopL b tape source@(Tape _ LoopL _) = seekLoopL (b-1) tape (focusLeftL source)
-            seekLoopL b tape source = seekLoopL b tape (focusLeftL source)
+            seekLoopL !b tape source@(Tape _ cmd _) =
+                  let b' = case cmd of LoopR -> b+1
+                                       LoopL -> b-1
+                                       _     -> b
+                  in  seekLoopL b' tape (focusLeftL source)
 
