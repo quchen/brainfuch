@@ -48,33 +48,32 @@ data SuperfuckCommand = Go Int
                       | Read'
                       | LoopL'
                       | LoopR'
-                      | Comment'   String
+                      | Comment' String
                       deriving (Eq)
 
 -- Adds the syntax "x(n)" for the command "x" appearing repeatedly, for example
 -- "+(3)" = "+++".
 instance Show SuperfuckCommand where
       show (Go i) = case (i `compare` 0, abs i) of
-            (LT, 1)  -> "<"
-            (LT, i') -> "<(" ++ show i' ++ ")"
+            (LT, i') -> show GoLeft ++ showMulti i'
             (EQ, _)  -> ""
-            (GT, 1)  -> ">"
-            (GT, i') -> ">(" ++ show i' ++ ")"
+            (GT, i') -> show GoRight ++ showMulti i'
 
       show (Add n) = case (n `compare` 0, abs n) of
-            (LT, 1)  -> "-"
-            (LT, n') -> "-(" ++ show n' ++ ")"
+            (LT, n') -> show Decrement ++ showMulti n'
             (EQ, _)  -> ""
-            (GT, 1)  -> "+"
-            (GT, n') -> "+(" ++ show n' ++ ")"
+            (GT, n') -> show Increment ++ showMulti n'
 
       show (Print' 0)   = ""
-      show (Print' 1)   = "."
-      show (Print' n)   = ".(" ++ show n ++ ")"
+      show (Print' n)   = show Print ++ showMulti n
       show Read'        = show Read
       show LoopL'       = show LoopL
       show LoopR'       = show LoopR
       show (Comment' s) = s
+
+showMulti :: (Show a, Ord a, Num a) => a -> String
+showMulti n | n <= 1    = ""
+            | otherwise = show n
 
 data SuperfuckSource = SFSource [SuperfuckCommand]
       deriving (Eq)
