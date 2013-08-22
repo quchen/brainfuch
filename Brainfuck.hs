@@ -5,6 +5,8 @@ import System.IO (hFlush, stdout)
 import Data.Word
 import Data.Maybe (mapMaybe)
 import Data.List
+import Data.Monoid
+import Debug.Trace
 
 -- | Infinite list type
 data Stream a = a :| Stream a
@@ -92,6 +94,7 @@ instance Show BrainfuckCommand where
       show (Comment c) = [c]
 
 type BrainfuckTape = Tape [] BrainfuckCommand
+type SuperfuckTape = Tape [] SuperfuckCommand
 data BrainfuckSource = BFSource [BrainfuckCommand]
 
 instance Show BrainfuckSource where
@@ -202,15 +205,21 @@ optimizePass (SFSource xs) = SFSource $ mapMaybe dropRedundant .
 
             combine go@(Go _:_) = [combineGo go]
             combine add@(Add _:_) = [combineAdd add]
-            combine print'@(Print' _:_) = [Print' . fromIntegral $ length print']
+            combine print'@(Print' _:_) = [combinePrint' print']
             combine comment'@(Comment' _:_) = [combineComment' comment']
             combine xs = xs
+
+            -- TODO: Monoid instances for new Go/Add/Comment types? All four
+            --       functions below would then just be mconcat.
 
             -- < and > add up/cancel
             combineGo = Go . sum . map (\(Go i) -> i)
 
             -- + and - add up/cancel
             combineAdd = Add . sum . map (\(Add n) -> n)
+
+            -- Printing the same character multiple times
+            combinePrint' = Print' . sum . map (\(Print' i) -> i)
 
             -- Comment "a", Comment "b" ==> Comment "ab"
             combineComment' = Comment' . concatMap (\(Comment' x) -> x)
@@ -247,7 +256,64 @@ parseBrainfuck source = BFSource $ map toBF source
 bf2tape :: BrainfuckSource -> BrainfuckTape
 bf2tape (BFSource (b:bs)) = Tape [] b bs
 
+sf2tape :: SuperfuckSource -> SuperfuckTape
+sf2tape (SFSource (b:bs)) = Tape [] b bs
 
+
+-- | Executes a Superfuck program
+runSuperfuck :: SuperfuckTape -> IO ()
+runSuperfuck = run emptyTape
+      where -- Apply f n times
+            times n f = appEndo . mconcat . map Endo $ replicate n f
+
+            run tape@(Tape l !p r) source@(Tape _ cmd _) = case cmd of
+
+                  -- Move data pointer
+                  Go n -> step (abs n `times` f $ tape) source
+                        where f | n > 0 = focusRightS
+                                | n < 0 = focusLeftS
+                                | otherwise = error "Zero encountered, bug"
+
+                  -- Modify data
+                  Add n -> step (Tape l (p+n) r) source
+
+                  -- I/O
+                  Print' n -> do putStr (replicate (fromIntegral n) (chr p))
+                                 flush
+                                 step tape source
+                  Read' -> do c <- getChar
+                              step (Tape l (ord c) r) source
+
+                  -- Loop
+                  LoopL' | p == 0 -> seekLoopR 0 tape source
+                  LoopR' | p /= 0 -> seekLoopL 0 tape source
+
+                  -- Comment or loop with terminating condition met: do nothing
+                  _ -> step tape source
+
+            step _    (Tape _ _ []) = return ()
+            step tape source = run tape (focusRightL source)
+
+            -- Moves the instruction pointer left until a "[" is found.
+            -- The first parameter ("b" for balance) retains the current bracket
+            -- balance to find the matching partner.
+            seekLoopR 1 tape source@(Tape _ LoopR' _) = step tape source
+            seekLoopR b tape source@(Tape _ cmd _) =
+                  let !b' = case cmd of LoopR' -> b-1
+                                        LoopL' -> b+1
+                                        _      -> b
+                  in  seekLoopR b' tape (focusRightL source)
+
+            -- Like seekLoopR, but in the other direction.
+            seekLoopL 1 tape source@(Tape _ LoopL' _) = step tape source
+            seekLoopL b tape source@(Tape _ cmd _) =
+                  let !b' = case cmd of LoopR' -> b+1
+                                        LoopL' -> b-1
+                                        _      -> b
+                  in  seekLoopL b' tape (focusLeftL source)
+
+
+-- | Executes a Brainfuck program
 runBrainfuck :: BrainfuckTape -> IO ()
 runBrainfuck = run emptyTape
       where
@@ -283,17 +349,17 @@ runBrainfuck = run emptyTape
             -- The first parameter ("b" for balance) retains the current bracket
             -- balance to find the matching partner.
             seekLoopR 1 tape source@(Tape _ LoopR _) = step tape source
-            seekLoopR !b tape source@(Tape _ cmd _) =
-                  let b' = case cmd of LoopR -> b-1
-                                       LoopL -> b+1
-                                       _     -> b
+            seekLoopR b tape source@(Tape _ cmd _) =
+                  let !b' = case cmd of LoopR -> b-1
+                                        LoopL -> b+1
+                                        _     -> b
                   in  seekLoopR b' tape (focusRightL source)
 
             -- Like seekLoopR, but in the other direction.
             seekLoopL 1 tape source@(Tape _ LoopL _) = step tape source
-            seekLoopL !b tape source@(Tape _ cmd _) =
-                  let b' = case cmd of LoopR -> b+1
-                                       LoopL -> b-1
-                                       _     -> b
+            seekLoopL b tape source@(Tape _ cmd _) =
+                  let !b' = case cmd of LoopR -> b+1
+                                        LoopL -> b-1
+                                        _     -> b
                   in  seekLoopL b' tape (focusLeftL source)
 
