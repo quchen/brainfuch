@@ -3,6 +3,8 @@
 import Data.Char (chr, ord)
 import System.IO (hFlush, stdout)
 import Data.Word
+import Data.Maybe (mapMaybe)
+import Data.List
 
 -- | Infinite list type
 data Stream a = a :| Stream a
@@ -87,13 +89,13 @@ instance Show BrainfuckCommand where
       show Read        = ","
       show LoopL       = "["
       show LoopR       = "]"
-      show (Comment c) = show c
+      show (Comment c) = [c]
 
 type BrainfuckTape = Tape [] BrainfuckCommand
-type BrainfuckSource = [BrainfuckCommand]
+data BrainfuckSource = BFSource [BrainfuckCommand]
 
 instance Show BrainfuckSource where
-      show = concatMap show
+      show (BFSource xs) = concatMap show xs
 
 instance Show BrainfuckTape where
       show source@(Tape (_:_) _ _) = show (focusLeftL source)
@@ -108,15 +110,16 @@ data SuperfuckCommand = Go Int
                       | LoopL'
                       | LoopR'
                       | Comment' String
+                      deriving (Eq)
 
 instance Show SuperfuckCommand where
       show (Go i) = case i `compare` 0 of
-            LT -> concat . replicate i $ show GoLeft
+            LT -> concat . replicate (abs i) $ show GoLeft
             EQ -> ""
             GT -> concat . replicate i $ show GoRight
 
       show (Add n) = case n `compare` 0 of
-            LT -> concat . replicate n $ show Decrement
+            LT -> concat . replicate (abs n) $ show Decrement
             EQ -> ""
             GT -> concat . replicate n $ show Increment
 
@@ -127,13 +130,15 @@ instance Show SuperfuckCommand where
       show LoopR'       = show LoopR
       show (Comment' s) = s
 
-type SuperfuckSource = [SuperfuckCommand]
+data SuperfuckSource = SFSource [SuperfuckCommand]
+      deriving (Eq)
+
 instance Show SuperfuckSource where
-      show = concatMap show
+      show (SFSource xs) = concatMap show xs
 
 -- | Brainfuck to Superfuck conversion. Inverse of sf2bf.
 bf2sf :: BrainfuckSource -> SuperfuckSource
-bf2sf = map convert
+bf2sf (BFSource xs) = SFSource $ map convert xs
       where convert GoRight = Go 1
             convert GoLeft  = Go (-1)
             convert Increment = Add 1
@@ -146,14 +151,14 @@ bf2sf = map convert
 
 -- | Superfuck to Brainfuck conversion. Inverse of bf2sf.
 sf2bf :: SuperfuckSource -> BrainfuckSource
-sf2bf = concatMap convert
+sf2bf (SFSource xs) = BFSource $ concatMap convert xs
       where convert (Go n) = case n `compare` 0 of
-                  LT -> replicate n GoLeft
+                  LT -> replicate (abs n) GoLeft
                   EQ -> []
                   GT -> replicate n GoRight
 
             convert (Add n) = case n `compare` 0 of
-                  LT -> replicate n Decrement
+                  LT -> replicate (abs n) Decrement
                   EQ -> []
                   GT -> replicate n Increment
 
@@ -169,20 +174,54 @@ sf2bf = concatMap convert
 
 
 -- TODO: Function to check parenthesis balance
--- TODO: Optimizer
---        o)  [] --> warning: potential infinite loop
---        o)  < and > cancel
---        o)  + and - cancel
---        o)  Multiple comments into a single "Comment" cell
---        o)  Remove comments for execution if desired
+
+-- One optimization pass.
+-- TODO: Make optimizations dependent on parameters
+optimizePass :: SuperfuckSource -> SuperfuckSource
+optimizePass (SFSource xs) = SFSource $ mapMaybe dropRedundant .
+                                        concatMap combine .
+                                        groupBy equivalence $
+                                        xs
+      where equivalence (Go     _)   (Go     _)   = True
+            equivalence (Add    _)   (Add    _)   = True
+            equivalence (Print' _)   (Print' _)   = True
+            equivalence (Comment' _) (Comment' _) = True
+            equivalence _ _ = False
+
+            combine go@(Go _:_) = [combineGo go]
+            combine add@(Add _:_) = [combineAdd add]
+            combine print'@(Print' _:_) = [Print' . fromIntegral $ length print']
+            combine comment'@(Comment' _:_) = [combineComment' comment']
+            combine xs = xs
+
+            -- < and > add up/cancel
+            combineGo = Go . sum . map (\(Go i) -> i)
+
+            -- + and - add up/cancel
+            combineAdd = Add . sum . map (\(Add n) -> n)
+
+            -- Comment "a", Comment "b" ==> Comment "ab"
+            combineComment' = Comment' . concatMap (\(Comment' x) -> x)
+
+            dropRedundant (Comment' _) = Nothing
+            dropRedundant (Add 0) = Nothing
+            dropRedundant (Go 0) = Nothing
+            dropRedundant x = Just x
+
+            -- TODO: [] --> warning: potential infinite loop
+
+optimize :: SuperfuckSource -> SuperfuckSource
+optimize sfSource = let opt = optimizePass sfSource
+                    in  if opt == sfSource then sfSource
+                        else optimize opt
 
 
 
 
 
 -- | Should be the inverse to the Show function
-parseBrainfuck :: String -> [BrainfuckCommand]
-parseBrainfuck source = map toBF source
+parseBrainfuck :: String -> BrainfuckSource
+parseBrainfuck source = BFSource $ map toBF source
       where toBF '>' = GoRight
             toBF '<' = GoLeft
             toBF '+' = Increment
