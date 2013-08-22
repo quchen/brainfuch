@@ -105,7 +105,9 @@ runBrainfuck = run S.emptyTape . bf2tape
                   Decrement -> step (Tape l (p-1) r) source
 
                   -- I/O
-                  Print -> putChar (chr p) >> flush >> step tape source
+                  Print -> do putChar . chr $ p `mod` 128
+                              flush
+                              step tape source
                   Read  -> do c <- getChar
                               step (Tape l (ord c) r) source
 
