@@ -65,6 +65,8 @@ flush = hFlush stdout
 --                                         tape
 --                                         (iterateS focusRight tape)
 
+
+-- | The fundamental Brainfuck type.
 data BrainfuckCommand = GoRight
                       | GoLeft
                       | Increment
@@ -75,7 +77,22 @@ data BrainfuckCommand = GoRight
                       | LoopR
                       | Comment Char
 
+instance Show BrainfuckCommand where
+      show GoRight     = ">"
+      show GoLeft      = "<"
+      show Increment   = "+"
+      show Decrement   = "-"
+      show Print       = "."
+      show Read        = ","
+      show LoopL       = "["
+      show LoopR       = "]"
+      show (Comment c) = show c
+
 type Brainfuck = Tape [] BrainfuckCommand
+
+instance Show Brainfuck where
+      show source@(Tape (_:_) _ _) = show (focusLeftL source)
+      show (Tape _ p rs) = concatMap show (p:rs)
 
 parseBrainfuck :: String -> Brainfuck
 parseBrainfuck source = Tape [] c cs
