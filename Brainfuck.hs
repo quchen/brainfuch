@@ -2,6 +2,7 @@
 
 import Data.Char (chr, ord)
 import System.IO (hFlush, stdout)
+import Data.Word
 
 -- | Infinite list type
 data Stream a = a :| Stream a
@@ -88,25 +89,84 @@ instance Show BrainfuckCommand where
       show LoopR       = "]"
       show (Comment c) = show c
 
-type Brainfuck = Tape [] BrainfuckCommand
+type BrainfuckTape = Tape [] BrainfuckCommand
+type BrainfuckSource = [BrainfuckCommand]
 
-instance Show Brainfuck where
+instance Show BrainfuckSource where
+      show = concatMap show
+
+instance Show BrainfuckTape where
       show source@(Tape (_:_) _ _) = show (focusLeftL source)
       show (Tape _ p rs) = concatMap show (p:rs)
 
-parseBrainfuck :: String -> Brainfuck
-parseBrainfuck source = Tape [] c cs
-      where (c:cs)   = map toBF source
-            -- TODO: Handle empty input
-            toBF '>' = GoRight
-            toBF '<' = GoLeft
-            toBF '+' = Increment
-            toBF '-' = Decrement
-            toBF '.' = Print
-            toBF ',' = Read
-            toBF '[' = LoopL
-            toBF ']' = LoopR
-            toBF  c  = Comment c
+-- A higher-level representation of Brainfuck code; combines successive similar
+-- commands into one, and is easier to optimize.
+data SuperfuckCommand = Go Int
+                      | Add Int
+                      | Print' Word
+                      | Read'
+                      | LoopL'
+                      | LoopR'
+                      | Comment' String
+
+instance Show SuperfuckCommand where
+      show (Go i) = case i `compare` 0 of
+            LT -> concat . replicate i $ show GoLeft
+            EQ -> ""
+            GT -> concat . replicate i $ show GoRight
+
+      show (Add n) = case n `compare` 0 of
+            LT -> concat . replicate n $ show Decrement
+            EQ -> ""
+            GT -> concat . replicate n $ show Increment
+
+      show (Print' 0)   = ""
+      show (Print' n)   = concat . replicate (fromIntegral n) $ show Print
+      show Read'        = show Read
+      show LoopL'       = show LoopL
+      show LoopR'       = show LoopR
+      show (Comment' s) = s
+
+type SuperfuckSource = [SuperfuckCommand]
+instance Show SuperfuckSource where
+      show = concatMap show
+
+-- | Brainfuck to Superfuck conversion. Inverse of sf2bf.
+bf2sf :: BrainfuckSource -> SuperfuckSource
+bf2sf = map convert
+      where convert GoRight = Go 1
+            convert GoLeft  = Go (-1)
+            convert Increment = Add 1
+            convert Decrement = Add (-1)
+            convert Print = Print' 1
+            convert Read  = Read'
+            convert LoopL = LoopL'
+            convert LoopR = LoopR'
+            convert (Comment c) = Comment' [c]
+
+-- | Superfuck to Brainfuck conversion. Inverse of bf2sf.
+sf2bf :: SuperfuckSource -> BrainfuckSource
+sf2bf = concatMap convert
+      where convert (Go n) = case n `compare` 0 of
+                  LT -> replicate n GoLeft
+                  EQ -> []
+                  GT -> replicate n GoRight
+
+            convert (Add n) = case n `compare` 0 of
+                  LT -> replicate n Decrement
+                  EQ -> []
+                  GT -> replicate n Increment
+
+            convert (Print' 0) = []
+            convert (Print' n) = replicate (fromIntegral n) Print
+            convert Read'  = [Read]
+            convert LoopL' = [LoopL]
+            convert LoopR' = [LoopR]
+
+            convert (Comment' []) = []
+            convert (Comment' cs) = map Comment cs
+
+
 
 -- TODO: Function to check parenthesis balance
 -- TODO: Optimizer
@@ -117,7 +177,27 @@ parseBrainfuck source = Tape [] c cs
 --        o)  Remove comments for execution if desired
 
 
-runBrainfuck :: Brainfuck -> IO ()
+
+
+
+-- | Should be the inverse to the Show function
+parseBrainfuck :: String -> [BrainfuckCommand]
+parseBrainfuck source = map toBF source
+      where toBF '>' = GoRight
+            toBF '<' = GoLeft
+            toBF '+' = Increment
+            toBF '-' = Decrement
+            toBF '.' = Print
+            toBF ',' = Read
+            toBF '[' = LoopL
+            toBF ']' = LoopR
+            toBF  c  = Comment c
+
+bf2tape :: [BrainfuckCommand] -> BrainfuckTape
+bf2tape (b:bs) = Tape [] b bs
+
+
+runBrainfuck :: BrainfuckTape -> IO ()
 runBrainfuck = run emptyTape
       where
             -- Runs a single instruction (without advancing the pointer, which
