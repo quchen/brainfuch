@@ -15,6 +15,10 @@ data Stream a = a :| Stream a
 --   stream (for the data tape).
 data Tape c a = Tape (c a) a (c a)
 
+-- Same "extract" as the comonadic function
+extract :: Tape c a -> a
+extract (Tape _ p _) = p
+
 -- | Move focus on stream tape right
 focusRightS :: Tape Stream a -> Tape Stream a
 focusRightS (Tape ls p (r :| rs)) = Tape (p :| ls) r rs
@@ -266,7 +270,7 @@ runSuperfuck = run emptyTape
       where -- Apply f n times
             times n f = appEndo . mconcat . map Endo $ replicate n f
 
-            run tape@(Tape l !p r) source@(Tape _ cmd _) = case cmd of
+            run tape@(Tape l !p r) source = case extract source of
 
                   -- Move data pointer
                   Go n -> step (abs n `times` f $ tape) source
@@ -319,7 +323,7 @@ runBrainfuck = run emptyTape
       where
             -- Runs a single instruction (without advancing the pointer, which
             -- is done by a subsequent call to 'step')
-            run tape@(Tape l !p r) source@(Tape _ cmd _) = case cmd of
+            run tape@(Tape l !p r) source = case extract source of
 
                   -- Move data pointer
                   GoRight -> step (focusRightS tape) source
