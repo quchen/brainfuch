@@ -1,22 +1,35 @@
 {-# LANGUAGE BangPatterns #-}
 
+-- | Superfuck is an intermediate language based on Brainfuck, but has an easier
+--   syntax representation, which makes it more suitable for optimizations.
+--
+--     * Multiple uses of +, -, >, < can be combined, for example "+(3)" stands
+--       for "+++".
+--     * Consecutive comment characters are combined into a comment String
+--       (Brainfuck.hs treats every character on its own).
+--
+--   This enables a couple of optimizations to be dealt with easily, for
+--   example:
+--
+--     * Consecutive + and -, < and > combine/cancel
+--     * Adding X to a cell can be done in a single arithmetic operation instead
+--       of adding 1 repeatedly
+--     * Printing the same character multiple times can be done by a single
+--       output statement
+
 module Superfuck (
         bf2sf
       , sf2bf
       , optimize
-      , sf2tape
       , runSuperfuck
 ) where
 
 import Data.Char (chr, ord)
-import System.IO (hFlush, stdout)
 import Data.Word
 import Data.Maybe (mapMaybe)
 import Data.List
 import Data.Monoid
-import Debug.Trace
 
-import Stream (Stream(..))
 import qualified Stream as S
 import qualified ListTape as L
 import Comonad
@@ -26,21 +39,20 @@ import Brainfuck
 
 
 
-type SuperfuckTape = Tape [] SuperfuckCommand
 
-
-
--- A higher-level representation of Brainfuck code; combines successive similar
--- commands into one, and is easier to optimize.
+-- | A higher-level representation of Brainfuck code; allows combination of
+-- successive similar commands into one, and is easier to optimize.
 data SuperfuckCommand = Go Int
                       | Add Int
                       | Print' Word
                       | Read'
                       | LoopL'
                       | LoopR'
-                    | Comment'   String
+                      | Comment'   String
                       deriving (Eq)
 
+-- Adds the syntax "x(n)" for the command "x" appearing repeatedly, for example
+-- "+(3)" = "+++".
 instance Show SuperfuckCommand where
       show (Go i) = case (i `compare` 0, abs i) of
             (LT, 1)  -> "<"
@@ -73,14 +85,14 @@ instance Show SuperfuckSource where
 -- | Brainfuck to Superfuck conversion. Inverse of sf2bf.
 bf2sf :: BrainfuckSource -> SuperfuckSource
 bf2sf (BFSource xs) = SFSource $ map convert xs
-      where convert GoRight = Go 1
-            convert GoLeft  = Go (-1)
-            convert Increment = Add 1
-            convert Decrement = Add (-1)
-            convert Print = Print' 1
-            convert Read  = Read'
-            convert LoopL = LoopL'
-            convert LoopR = LoopR'
+      where convert GoRight     = Go 1
+            convert GoLeft      = Go (-1)
+            convert Increment   = Add 1
+            convert Decrement   = Add (-1)
+            convert Print       = Print' 1
+            convert Read        = Read'
+            convert LoopL       = LoopL'
+            convert LoopR       = LoopR'
             convert (Comment c) = Comment' [c]
 
 -- | Superfuck to Brainfuck conversion. Inverse of bf2sf.
@@ -106,7 +118,11 @@ sf2bf (SFSource xs) = BFSource $ concatMap convert xs
             convert (Comment' cs) = map Comment cs
 
 
--- One optimization pass.
+-- | Applies one optimization pass. List of optimizations:
+--
+--     * Combine successive + and -, < and >, comments, print statements
+--     * Remove redundant commands, e.g. comments and adding 0
+
 -- TODO: Make optimizations dependent on parameters
 optimizePass :: SuperfuckSource -> SuperfuckSource
 optimizePass (SFSource xs) = SFSource $ mapMaybe dropRedundant .
@@ -123,7 +139,7 @@ optimizePass (SFSource xs) = SFSource $ mapMaybe dropRedundant .
             combine add@(Add _:_) = [combineAdd add]
             combine print'@(Print' _:_) = [combinePrint' print']
             combine comment'@(Comment' _:_) = [combineComment' comment']
-            combine xs = xs
+            combine ys = ys
 
             -- TODO: Monoid instances for new Go/Add/Comment types? All four
             --       functions below would then just be mconcat.
@@ -147,22 +163,25 @@ optimizePass (SFSource xs) = SFSource $ mapMaybe dropRedundant .
 
             -- TODO: [] --> warning: potential infinite loop
 
+-- | Applies optimizations repeatedly until the code doesn't change anymore.
 optimize :: SuperfuckSource -> SuperfuckSource
 optimize sfSource = let opt = optimizePass sfSource
                     in  if opt == sfSource then sfSource
-                        else optimize opt
+                                           else optimize opt
 
 
 
-sf2tape :: SuperfuckSource -> SuperfuckTape
-sf2tape (SFSource (b:bs)) = Tape [] b bs
 
 
 
--- | Executes a Superfuck program
-runSuperfuck :: SuperfuckTape -> IO ()
-runSuperfuck = run S.emptyTape
+-- | Executes a Superfuck program (as given; if optimizations are desired apply
+--   them explicitly).
+runSuperfuck :: SuperfuckSource -> IO ()
+runSuperfuck = run S.emptyTape . sf2tape
       where
+            sf2tape (SFSource []    ) = Tape [] (Comment' " ") []
+            sf2tape (SFSource (b:bs)) = Tape [] b bs
+
             -- Apply f n times
             times n f = appEndo . mconcat . map Endo $ replicate n f
 

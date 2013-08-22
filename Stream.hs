@@ -24,9 +24,9 @@ instance Comonad (Tape Stream) where
 
       extract (Tape _ p _) = p
 
-      duplicate tape@(Tape l p r) = Tape (iterateS focusLeft tape)
-                                         tape
-                                         (iterateS focusRight tape)
+      duplicate tape = Tape (iterateS focusLeft tape)
+                            tape
+                            (iterateS focusRight tape)
 
 
 iterateS :: (a -> a) -> a -> Stream a
@@ -41,9 +41,11 @@ focusRight (Tape ls p (r :| rs)) = Tape (p :| ls) r rs
 
 
 
--- | Move focus on stream tape right
+-- | Move focus on stream tape left
 focusLeft :: Tape Stream a -> Tape Stream a
 focusLeft (Tape (l :| ls) p rs) = Tape ls l (p :| rs)
+
+
 
 emptyTape :: Tape Stream Int
 emptyTape = Tape zeros 0 zeros

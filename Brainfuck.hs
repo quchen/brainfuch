@@ -3,20 +3,12 @@
 module Brainfuck (
         BrainfuckCommand(..)
       , BrainfuckSource(..)
-      , checkSyntax
       , parseBrainfuck
-      , bf2tape
       , runBrainfuck
 ) where
 
 import Data.Char (chr, ord)
-import Data.Word
-import Data.Maybe (mapMaybe)
-import Data.List
-import Data.Monoid
-import Debug.Trace
 
-import Stream (Stream(..))
 import qualified Stream as S
 import qualified ListTape as L
 import Comonad
@@ -28,7 +20,7 @@ import Tape
 
 
 
--- | The fundamental Brainfuck type.
+-- | The fundamental Brainfuck type. Isomorphic to Brainfuck source.
 data BrainfuckCommand = GoRight
                       | GoLeft
                       | Increment
@@ -50,26 +42,20 @@ instance Show BrainfuckCommand where
       show LoopR       = "]"
       show (Comment c) = [c]
 
-type BrainfuckTape = Tape [] BrainfuckCommand
 data BrainfuckSource = BFSource [BrainfuckCommand]
 
 instance Show BrainfuckSource where
       show (BFSource xs) = concatMap show xs
 
-instance Show BrainfuckTape where
-      show source@(Tape (_:_) _ _) = show (L.focusLeft source)
-      show (Tape _ p rs) = concatMap show (p:rs)
 
 
 
-
-
-
-
--- Checks whether the source is syntactically valid.
-checkSyntax :: BrainfuckSource -> Bool
-checkSyntax (BFSource xs) = checkBrackets xs
-      where checkBrackets xs = all (>= 0) scoreList && last scoreList == 0
+-- | Checks whether the source is syntactically valid.
+validateSyntax :: BrainfuckSource -> BrainfuckSource
+validateSyntax source@(BFSource xs)
+      | checkBrackets = source
+      | otherwise     = error "Bracket mismatch"
+      where checkBrackets = all (>= 0) scoreList && last scoreList == 0
             scoreList = scanl1 (+) $ map bracketScore xs
             bracketScore LoopL =  1
             bracketScore LoopR = -1
@@ -81,9 +67,9 @@ checkSyntax (BFSource xs) = checkBrackets xs
 
 
 
--- | Should be the inverse to the Show function
+-- | Inverse of the Show instance
 parseBrainfuck :: String -> BrainfuckSource
-parseBrainfuck source = BFSource $ map toBF source
+parseBrainfuck = validateSyntax . BFSource . map toBF
       where toBF '>' = GoRight
             toBF '<' = GoLeft
             toBF '+' = Increment
@@ -95,18 +81,17 @@ parseBrainfuck source = BFSource $ map toBF source
             toBF  c  = Comment c
 
 
-bf2tape :: BrainfuckSource -> BrainfuckTape
-bf2tape (BFSource (b:bs)) = Tape [] b bs
-
-
 
 
 
 -- | Executes a Brainfuck program. Should only be used to benchmark/check
 --   'runSuperfuck'.
-runBrainfuck :: BrainfuckTape -> IO ()
-runBrainfuck = run S.emptyTape
+runBrainfuck :: BrainfuckSource -> IO ()
+runBrainfuck = run S.emptyTape . bf2tape
       where
+            bf2tape (BFSource []    ) = Tape [] (Comment ' ') []
+            bf2tape (BFSource (b:bs)) = Tape [] b bs
+
             -- Runs a single instruction (without advancing the pointer, which
             -- is done by a subsequent call to 'step')
             run tape@(Tape l !p r) source = case extract source of

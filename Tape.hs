@@ -2,8 +2,6 @@ module Tape (
       Tape (..)
 ) where
 
-import Comonad
-
 -- | Pointed container type. c is supposed to be a list (for the source) or a
 --   stream (for the data tape).
 data Tape c a = Tape (c a) a (c a)
