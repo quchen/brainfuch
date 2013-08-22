@@ -113,18 +113,23 @@ data SuperfuckCommand = Go Int
                       deriving (Eq)
 
 instance Show SuperfuckCommand where
-      show (Go i) = case i `compare` 0 of
-            LT -> concat . replicate (abs i) $ show GoLeft
-            EQ -> ""
-            GT -> concat . replicate i $ show GoRight
+      show (Go i) = case (i `compare` 0, abs i) of
+            (LT, 1)  -> "<"
+            (LT, i') -> "<(" ++ show i' ++ ")"
+            (EQ, _)  -> ""
+            (GT, 1)  -> ">"
+            (GT, i') -> ">(" ++ show i' ++ ")"
 
-      show (Add n) = case n `compare` 0 of
-            LT -> concat . replicate (abs n) $ show Decrement
-            EQ -> ""
-            GT -> concat . replicate n $ show Increment
+      show (Add n) = case (n `compare` 0, abs n) of
+            (LT, 1)  -> "-"
+            (LT, n') -> "-(" ++ show n' ++ ")"
+            (EQ, _)  -> ""
+            (GT, 1)  -> "+"
+            (GT, n') -> "+(" ++ show n' ++ ")"
 
       show (Print' 0)   = ""
-      show (Print' n)   = concat . replicate (fromIntegral n) $ show Print
+      show (Print' 1)   = "."
+      show (Print' n)   = ".(" ++ show n ++ ")"
       show Read'        = show Read
       show LoopL'       = show LoopL
       show LoopR'       = show LoopR
