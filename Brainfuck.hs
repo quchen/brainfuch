@@ -15,10 +15,6 @@ data Stream a = a :| Stream a
 --   stream (for the data tape).
 data Tape c a = Tape (c a) a (c a)
 
--- Same "extract" as the comonadic function
-extract :: Tape c a -> a
-extract (Tape _ p _) = p
-
 -- | Move focus on stream tape right
 focusRightS :: Tape Stream a -> Tape Stream a
 focusRightS (Tape ls p (r :| rs)) = Tape (p :| ls) r rs
@@ -39,40 +35,46 @@ emptyTape :: Tape Stream Int
 emptyTape = Tape zeros 0 zeros
       where zeros = 0 :| zeros
 
-iterateS :: (a -> a) -> a -> Stream a
-iterateS f x = let fx = f x
-               in  fx :| iterateS f fx
-
 flush :: IO ()
 flush = hFlush stdout
 
 
---class Functor w => Comonad w where
+class Functor w => Comonad w where
 
---      duplicate :: w a -> w (w a)
---      duplicate = extend id
+      duplicate :: w a -> w (w a)
+      duplicate = extend id
 
---      extract :: w a -> a
+      extract :: w a -> a
 
---      extend :: (w a -> b) -> w a -> w b
---      extend f = fmap f . duplicate
+      extend :: (w a -> b) -> w a -> w b
+      extend f = fmap f . duplicate
 
---(=>>) :: (Comonad w) => w a -> (w a -> b) -> w b
---w =>> f = extend f w
+(=>>) :: (Comonad w) => w a -> (w a -> b) -> w b
+w =>> f = extend f w
 
---instance Functor Stream where
---      fmap f (x :| xs) = f x :| fmap f xs
+instance Functor Stream where
+      fmap f (x :| xs) = f x :| fmap f xs
 
---instance Functor Tape where
---      fmap f (Tape l p r) = Tape (fmap f l) (f p) (fmap f r)
+instance (Functor f) => Functor (Tape f) where
+      fmap f (Tape l p r) = Tape (fmap f l) (f p) (fmap f r)
 
---instance Comonad Tape where
+instance Comonad (Tape Stream) where
 
---      extract (Tape _ p _) = p
+      extract (Tape _ p _) = p
 
---      duplicate tape@(Tape l p r) = Tape (iterateS focusLeft tape)
---                                         tape
---                                         (iterateS focusRight tape)
+      duplicate tape@(Tape l p r) = Tape (iterateS focusLeftS tape)
+                                         tape
+                                         (iterateS focusRightS tape)
+            where iterateS f x = let fx = f x
+                                 in  fx :| iterateS f fx
+
+instance Comonad (Tape []) where
+
+      extract (Tape _ p _) = p
+
+      duplicate tape@(Tape l p r) = Tape (tail $ iterate focusLeftL tape)
+                                         tape
+                                         (tail $ iterate focusRightL tape)
 
 
 -- | The fundamental Brainfuck type.
@@ -116,7 +118,7 @@ data SuperfuckCommand = Go Int
                       | Read'
                       | LoopL'
                       | LoopR'
-                      | Comment' String
+                    | Comment'   String
                       deriving (Eq)
 
 instance Show SuperfuckCommand where
@@ -201,9 +203,9 @@ optimizePass (SFSource xs) = SFSource $ mapMaybe dropRedundant .
                                         concatMap combine .
                                         groupBy equivalence $
                                         xs
-      where equivalence (Go     _)   (Go     _)   = True
-            equivalence (Add    _)   (Add    _)   = True
-            equivalence (Print' _)   (Print' _)   = True
+      where equivalence (Go       _) (Go       _) = True
+            equivalence (Add      _) (Add      _) = True
+            equivalence (Print'   _) (Print'   _) = True
             equivalence (Comment' _) (Comment' _) = True
             equivalence _ _ = False
 
@@ -267,7 +269,8 @@ sf2tape (SFSource (b:bs)) = Tape [] b bs
 -- | Executes a Superfuck program
 runSuperfuck :: SuperfuckTape -> IO ()
 runSuperfuck = run emptyTape
-      where -- Apply f n times
+      where
+            -- Apply f n times
             times n f = appEndo . mconcat . map Endo $ replicate n f
 
             run tape@(Tape l !p r) source = case extract source of
@@ -295,29 +298,32 @@ runSuperfuck = run emptyTape
                   -- Comment or loop with terminating condition met: do nothing
                   _ -> step tape source
 
-            step _    (Tape _ _ []) = return ()
+            step _ (Tape _ _ []) = return ()
             step tape source = run tape (focusRightL source)
 
             -- Moves the instruction pointer left until a "[" is found.
             -- The first parameter ("b" for balance) retains the current bracket
             -- balance to find the matching partner.
             seekLoopR 1 tape source@(Tape _ LoopR' _) = step tape source
-            seekLoopR b tape source@(Tape _ cmd _) =
-                  let !b' = case cmd of LoopR' -> b-1
-                                        LoopL' -> b+1
-                                        _      -> b
+            seekLoopR b tape source =
+                  let !b' = case extract source of
+                                  LoopR' -> b-1
+                                  LoopL' -> b+1
+                                  _      -> b
                   in  seekLoopR b' tape (focusRightL source)
 
             -- Like seekLoopR, but in the other direction.
             seekLoopL 1 tape source@(Tape _ LoopL' _) = step tape source
-            seekLoopL b tape source@(Tape _ cmd _) =
-                  let !b' = case cmd of LoopR' -> b+1
-                                        LoopL' -> b-1
-                                        _      -> b
+            seekLoopL b tape source =
+                  let !b' = case extract source of
+                                  LoopR' -> b+1
+                                  LoopL' -> b-1
+                                  _      -> b
                   in  seekLoopL b' tape (focusLeftL source)
 
 
--- | Executes a Brainfuck program
+-- | Executes a Brainfuck program. Should only be used to benchmark/check
+--   'runSuperfuck'.
 runBrainfuck :: BrainfuckTape -> IO ()
 runBrainfuck = run emptyTape
       where
@@ -346,24 +352,26 @@ runBrainfuck = run emptyTape
                   _ -> step tape source
 
             -- Advances the instruction pointer
-            step _    (Tape _ _ []) = return ()
+            step _ (Tape _ _ []) = return ()
             step tape source = run tape (focusRightL source)
 
             -- Moves the instruction pointer left until a "[" is found.
             -- The first parameter ("b" for balance) retains the current bracket
             -- balance to find the matching partner.
             seekLoopR 1 tape source@(Tape _ LoopR _) = step tape source
-            seekLoopR b tape source@(Tape _ cmd _) =
-                  let !b' = case cmd of LoopR -> b-1
-                                        LoopL -> b+1
-                                        _     -> b
+            seekLoopR b tape source =
+                  let !b' = case extract source of
+                                  LoopR -> b-1
+                                  LoopL -> b+1
+                                  _     -> b
                   in  seekLoopR b' tape (focusRightL source)
 
             -- Like seekLoopR, but in the other direction.
             seekLoopL 1 tape source@(Tape _ LoopL _) = step tape source
-            seekLoopL b tape source@(Tape _ cmd _) =
-                  let !b' = case cmd of LoopR -> b+1
-                                        LoopL -> b-1
-                                        _     -> b
+            seekLoopL b tape source =
+                  let !b' = case extract source of
+                                  LoopR -> b+1
+                                  LoopL -> b-1
+                                  _     -> b
                   in  seekLoopL b' tape (focusLeftL source)
 
