@@ -86,6 +86,9 @@ parseBrainfuck = validateSyntax . BFSource . map toBF
 
 -- | Executes a Brainfuck program. Should only be used to benchmark/check
 --   'runSuperfuck'.
+
+-- Note: this function will only be changed to fix bugs. See runSuperfuck
+--       for the current interpreter.
 runBrainfuck :: BrainfuckSource -> IO ()
 runBrainfuck = run S.emptyTape . bf2tape
       where
@@ -118,7 +121,7 @@ runBrainfuck = run S.emptyTape . bf2tape
                   -- Comment or loop with terminating condition met: do nothing
                   _ -> step tape source
 
-            -- Advances the instruction pointer
+            -- Advance instruction pointer (or terminate)
             step _ (Tape _ _ []) = return ()
             step tape source = run tape (L.focusRight source)
 

@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+
 module ListTape (
         focusLeft
       , focusRight
@@ -18,9 +20,7 @@ focusLeft tape = tape
 
 
 instance Comonad (Tape []) where
-
       extract (Tape _ p _) = p
-
       duplicate tape = Tape (tail $ iterate focusLeft tape)
                             tape
                             (tail $ iterate focusRight tape)
