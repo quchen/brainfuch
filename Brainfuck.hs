@@ -173,7 +173,14 @@ sf2bf (SFSource xs) = BFSource $ concatMap convert xs
 
 
 
--- TODO: Function to check parenthesis balance
+-- Checks whether the source is syntactically valid.
+checkSyntax :: BrainfuckSource -> Bool
+checkSyntax (BFSource xs) = checkBrackets xs
+      where checkBrackets xs = all (>= 0) scoreList && last scoreList == 0
+            scoreList = scanl1 (+) $ map bracketScore xs
+            bracketScore LoopL =  1
+            bracketScore LoopR = -1
+            bracketScore _     =  0
 
 -- One optimization pass.
 -- TODO: Make optimizations dependent on parameters
@@ -260,7 +267,7 @@ runBrainfuck = run emptyTape
                   LoopL | p == 0 -> seekLoopR 0 tape source
                   LoopR | p /= 0 -> seekLoopL 0 tape source
 
-                  -- Comment or loop with terminating condition met
+                  -- Comment or loop with terminating condition met: do nothing
                   _ -> step tape source
 
             -- Advances the instruction pointer
