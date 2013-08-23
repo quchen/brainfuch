@@ -11,7 +11,8 @@ The core part was written in roughly an hour without any prior knowledge of Brai
 Here's how to run a program:
 
 ```haskell
-readFile "source.bf" >>= runSuperfuck . optimize . bf2sf . parseBrainfuck
+import Brainfuch
+readFile "source.bf" >>= runBrainfuck
 ```
 
 Note that the current version is pretty slow.
