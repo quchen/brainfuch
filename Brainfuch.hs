@@ -1,13 +1,14 @@
 -- | Frontend for the Brainfuck interpreter.
 
-module Brainfuch (runBrainfuck) where
+module Brainfuch (run) where
 
-import Brainfuck (parseBrainfuck)
-import Superfuck (runSuperfuck, optimize, bf2sf)
+import Superfuck
+import Parser
+
 
 -- | Runs a given Brainfuck program.
-runBrainfuck :: String -> IO ()
-runBrainfuck = runSuperfuck . optimize . bf2sf . parseBrainfuck
-
-
+run :: String -> IO ()
+run source = case parseBrainfuck source of
+      Right s -> runSuperfuck s
+      Left  e -> print e
 
