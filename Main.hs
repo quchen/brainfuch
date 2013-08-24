@@ -1,6 +1,7 @@
 module Main (main) where
 
-import System.Environment (getArgs)
+import System.Environment
+import System.IO
 
 import qualified Brainfuch as Brainfuck
 
@@ -9,11 +10,13 @@ import qualified Brainfuch as Brainfuck
 main :: IO ()
 main = do
       args <- getArgs
+      hSetBuffering stdout NoBuffering
+      hSetBuffering stdin  NoBuffering
       case args of
             ("--help":_) -> showHelp
             ("-h":_)     -> showHelp
-            []           -> getContents >>= Brainfuck.run
-            (h:_)        -> readFile h >>= Brainfuck.run
+            []           -> getContents   >>= Brainfuck.run
+            (file:_)     -> readFile file >>= Brainfuck.run
 
 
 showHelp :: IO ()

@@ -36,6 +36,9 @@ import Types
 -- TODO: Add optimizer again. The parser will remove one pass of redundant
 --       operations only, so "+-.+-.+-." will result in "...", but should be
 --       ".3".
+--
+--       - Remove loops that are never entered (beginning of file, or loop
+--         immediately after another loop)
 
 
 

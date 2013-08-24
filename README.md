@@ -10,14 +10,7 @@ Brainfuck interpreter written in Haskell. Features:
 
 The core part was written in roughly an hour without any prior knowledge of Brainfuck or interpretation of procedural languages. Turns out Brainfuck is really as simple as they all say.
 
-Here's how to run a program:
-
-```haskell
-import Brainfuch
-main = readFile "source.bf" >>= run
-```
-
-Note that the current version is probably not very performant. (Haven't compared it to anything though.
+Note that the current version is probably not very performant. (Haven't compared it to anything though.)
 
 Licence
 -------
