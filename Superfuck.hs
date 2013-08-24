@@ -53,9 +53,10 @@ run :: Tape S.Stream Int -- ^ Data tape
     -> SuperfuckSource   -- ^ Instruction tape
     -> IO (Tape S.Stream Int)
 run tape (SFSource []) = return tape
-run tape@(Tape l !p r) source@(SFSource (x:_)) = case x of
+run tape@(Tape l !p r) (SFSource (x:xs)) = let rest = SFSource xs
+                                           in  case x of
 
-      Move n -> advance (abs n `times` f $ tape) source
+      Move n -> run (abs n `times` f $ tape) rest
             where f | n > 0 = S.focusRight
                     | n < 0 = S.focusLeft
                     | otherwise = error "'Move 0' encountered, bug"
@@ -64,19 +65,19 @@ run tape@(Tape l !p r) source@(SFSource (x:_)) = case x of
                         --   time. (TODO: remove this case when everything's
                         --   polished)
 
-      Add n -> advance (Tape l (p+n) r) source
+      Add n -> run (Tape l (p+n) r) rest
 
-      Print n -> do putStr (replicate (fromIntegral n) (chr p))
+      Print n -> do putStr (replicate (fromIntegral n) (chr $ p `mod` 128))
                     flush
-                    advance tape source
+                    run tape rest
       Read    -> do c <- getChar
-                    advance (Tape l (ord c) r) source
+                    run (Tape l (ord c) r) rest
 
       -- Loop
       Loop body
-            | p == 0    -> advance tape source -- ignore entire loop
+            | p == 0    -> run tape rest -- ignore entire loop
             | otherwise -> do tape' <- runLoop tape body
-                              advance tape' source
+                              run tape' rest
 
 
 runLoop :: Tape S.Stream Int -- ^ Data tape
@@ -87,11 +88,3 @@ runLoop tape body = do
       if extract tape' /= 0
             then runLoop tape' body
             else return tape'
-
-
--- Advance instruction pointer (or terminate)
-advance :: Tape S.Stream Int -- ^ Data tape
-        -> SuperfuckSource   -- ^ Instruction tape
-        -> IO (Tape S.Stream Int)
-advance tape (SFSource [])     = return tape
-advance tape (SFSource (_:xs)) = run tape (SFSource xs)
