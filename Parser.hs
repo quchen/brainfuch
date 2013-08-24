@@ -10,8 +10,6 @@ import Control.Applicative hiding (many, optional)
 
 import Types
 
--- TODO: Fail on [] (infinite loop doing nothing)
-
 
 parseBrainfuck :: String -> Either ParseError SuperfuckSource
 parseBrainfuck = fmap dropRedundant . parse superfuckP "Brainfuck source parser"

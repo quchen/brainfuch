@@ -73,7 +73,7 @@ run (SFSource (x:xs)) tape@(Tape l !p r) = let rest = SFSource xs
 
       Add n -> run rest (Tape l (p+n) r)
 
-      Print n -> do putStr (replicate (fromIntegral n) (chr $ p `mod` 128))
+      Print n -> do putStr (replicate (fromIntegral n) (chr $ p `mod` 2^8))
                     flush
                     run rest tape
       Read    -> do c <- getChar
