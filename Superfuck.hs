@@ -26,7 +26,6 @@ import Data.Monoid
 import Control.Monad
 
 import qualified Stream as S
-import Comonad
 import Tape
 import Utilities
 import Types
@@ -34,10 +33,17 @@ import Types
 
 
 
+-- TODO: Add optimizer again. The parser will remove one pass of redundant
+--       operations only, so "+-.+-.+-." will result in "...", but should be
+--       ".3".
+
+
+
+
 -- | Executes a Superfuck program (as given; if optimizations are desired apply
 --   them explicitly).
 runSuperfuck :: SuperfuckSource -> IO ()
-runSuperfuck = void . run S.emptyTape
+runSuperfuck source = void $ run source S.emptyTape
 
 
 -- | Apply an endomorphism multiple times
@@ -49,14 +55,14 @@ times n f = appEndo . mconcat . map Endo $ replicate n f
 
 
 -- | Execute the command at the current location of the instruction tape
-run :: Tape S.Stream Int -- ^ Data tape
-    -> SuperfuckSource   -- ^ Instruction tape
-    -> IO (Tape S.Stream Int)
-run tape (SFSource []) = return tape
-run tape@(Tape l !p r) (SFSource (x:xs)) = let rest = SFSource xs
+run :: SuperfuckSource        -- ^ Instruction tape
+    -> Tape S.Stream Int      -- ^ Data tape
+    -> IO (Tape S.Stream Int) -- ^ Tape after termination
+run (SFSource []) tape = return tape
+run (SFSource (x:xs)) tape@(Tape l !p r) = let rest = SFSource xs
                                            in  case x of
 
-      Move n -> run (abs n `times` f $ tape) rest
+      Move n -> run rest (abs n `times` f $ tape)
             where f | n > 0 = S.focusRight
                     | n < 0 = S.focusLeft
                     | otherwise = error "'Move 0' encountered, bug"
@@ -65,26 +71,25 @@ run tape@(Tape l !p r) (SFSource (x:xs)) = let rest = SFSource xs
                         --   time. (TODO: remove this case when everything's
                         --   polished)
 
-      Add n -> run (Tape l (p+n) r) rest
+      Add n -> run rest (Tape l (p+n) r)
 
       Print n -> do putStr (replicate (fromIntegral n) (chr $ p `mod` 128))
                     flush
-                    run tape rest
+                    run rest tape
       Read    -> do c <- getChar
-                    run (Tape l (ord c) r) rest
+                    run rest (Tape l (ord c) r)
 
       -- Loop
       Loop body
-            | p == 0    -> run tape rest -- ignore entire loop
-            | otherwise -> do tape' <- runLoop tape body
-                              run tape' rest
+            | p == 0    -> run rest tape  -- ignore entire loop
+            | otherwise -> runLoop body tape >>= run rest
 
 
-runLoop :: Tape S.Stream Int -- ^ Data tape
-        -> SuperfuckSource   -- ^ Instruction tape
+runLoop :: SuperfuckSource   -- ^ Instruction tape
+        -> Tape S.Stream Int -- ^ Data tape
         -> IO (Tape S.Stream Int)
-runLoop tape body = do
-      tape' <- run tape body
-      if extract tape' /= 0
-            then runLoop tape' body
+runLoop body tape = do
+      tape'@(Tape _ p _) <- run body tape
+      if p /= 0
+            then runLoop body tape'
             else return tape'
