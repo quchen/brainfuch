@@ -7,6 +7,8 @@ module Stream (
       , emptyTape
 ) where
 
+
+
 import Tape
 
 

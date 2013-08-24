@@ -13,37 +13,32 @@ data SuperfuckCommand = Move Int
                       | Print Word
                       | Read
                       | Loop SuperfuckSource
-                      deriving (Eq)
 
 data SuperfuckSource = SFSource [SuperfuckCommand]
-      deriving (Eq)
 
 instance Show SuperfuckSource where
       show (SFSource xs) = concatMap show xs
 
 
 -- Adds the syntax "x(n)" for the command "x" appearing repeatedly, for example
--- "+(3)" = "+++".
+-- "+3" = "+++".
 instance Show SuperfuckCommand where
-      show (Move i) = case (i `compare` 0, abs i) of
-            (LT, j) -> '<' : showMulti j
-            (EQ, _) -> ""
-            (GT, j) -> '>' : showMulti j
-
-      show (Add n) = case (n `compare` 0, abs n) of
-            (LT, m) -> '-' : showMulti m
-            (EQ, _) -> ""
-            (GT, m) -> '+' : showMulti m
-
-      show (Print 0)   = ""
-      show (Print n)   = '.' : showMulti n
-      show Read        = ","
-      show (Loop body) = '[' : show body ++ "]"
+      show (Move  i) = showMulti i $ if i < 0 then '<' else '>'
+      show (Add   n) = showMulti n $ if n < 0 then '-' else '+'
+      show (Print 0) = ""
+      show (Print n) = showMulti n '.'
+      show  Read     = ","
+      show (Loop  b) = '[' : show b ++ "]"
 
 
 
 -- | Used to abbreviate multiple occurrences of identical symbols, i.e. the
 --   "(n)" syntax.
-showMulti :: (Show a, Ord a, Num a) => a -> String
-showMulti n | n <= 1    = ""
-            | otherwise = show n
+showMulti :: (Show a, Ord a, Num a)
+          => a      -- Int/Word for how many times the character appears
+          -> Char   -- ^ Character to show
+          -> String
+showMulti n = showMulti' (abs n)
+      where showMulti' 0 _ = ""
+            showMulti' 1 c = [c]
+            showMulti' k c = c : show k
