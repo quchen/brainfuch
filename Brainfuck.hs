@@ -1,10 +1,8 @@
 {-# LANGUAGE BangPatterns #-}
 
--- | Superfuck is the internal representation for Brainfuck, more suitable
---   for optimizations than a direct encoding.
 
-module Superfuck (
-      runSuperfuck
+module Brainfuck (
+      runBrainfuck
 ) where
 
 import Data.Char (chr, ord)
@@ -29,10 +27,10 @@ import Types
 
 
 
--- | Executes a Superfuck program (as given; if optimizations are desired apply
+-- | Executes a Brainfuck program (as given; if optimizations are desired apply
 --   them explicitly).
-runSuperfuck :: SuperfuckSource -> IO ()
-runSuperfuck = void . flip run S.emptyTape
+runBrainfuck :: BrainfuckSource -> IO ()
+runBrainfuck = void . flip run S.emptyTape
 
 
 
@@ -49,7 +47,7 @@ times n f = appEndo . mconcat . map Endo $ replicate n f
 
 
 -- | Execute the command at the current location of the instruction tape
-run :: SuperfuckSource        -- ^ Instruction tape
+run :: BrainfuckSource        -- ^ Instruction tape
     -> Tape S.Stream Int      -- ^ Data tape
     -> IO (Tape S.Stream Int) -- ^ Tape after termination
 
@@ -57,9 +55,8 @@ run (SFSource []    ) tape               = return tape
 run (SFSource (x:xs)) tape@(Tape l !p r) = let rest = SFSource xs
                                            in  case x of
 
-      Move n -> run rest (n' `times` f $ tape)
-            where n' = abs n
-                  f | n < 0     = S.focusLeft
+      Move n -> run rest (abs n `times` f $ tape)
+            where f | n < 0     = S.focusLeft
                     | otherwise = S.focusRight
 
       Add n -> run rest (Tape l (p+n) r)
@@ -78,7 +75,7 @@ run (SFSource (x:xs)) tape@(Tape l !p r) = let rest = SFSource xs
 
 
 
-runLoop :: SuperfuckSource        -- ^ Instruction tape
+runLoop :: BrainfuckSource        -- ^ Instruction tape
         -> Tape S.Stream Int      -- ^ Data tape
         -> IO (Tape S.Stream Int) -- ^ Tape after the loop terminates
 

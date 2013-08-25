@@ -2,13 +2,10 @@
 
 module Brainfuch (run) where
 
-import Superfuck
+import Brainfuck
 import Parser
 
 
 -- | Runs a given Brainfuck program.
 run :: String -> IO ()
-run source = case parseBrainfuck source of
-      Right s -> runSuperfuck s
-      Left  e -> print e
-
+run = either print runBrainfuck . parseBrainfuck

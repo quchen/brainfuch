@@ -11,12 +11,12 @@ import Control.Applicative hiding (many, optional)
 import Types
 
 
-parseBrainfuck :: String -> Either ParseError SuperfuckSource
+parseBrainfuck :: String -> Either ParseError BrainfuckSource
 parseBrainfuck = fmap dropRedundant . parse superfuckP "Brainfuck source parser"
 
 
 -- / Removes redundant statements like `Add 0`.
-dropRedundant :: SuperfuckSource -> SuperfuckSource
+dropRedundant :: BrainfuckSource -> BrainfuckSource
 dropRedundant (SFSource xs) = SFSource $ mapMaybe dropRedundant' xs
       where dropRedundant' (Add  0)  = Nothing
             dropRedundant' (Move 0)  = Nothing
@@ -25,14 +25,14 @@ dropRedundant (SFSource xs) = SFSource $ mapMaybe dropRedundant' xs
 
 
 
-superfuckP :: Parser SuperfuckSource
+superfuckP :: Parser BrainfuckSource
 superfuckP = SFSource . concat <$> do
       optional commentP
       many $ many1 superfuckCommandP <* optional commentP
 
 
 
-superfuckCommandP :: Parser SuperfuckCommand
+superfuckCommandP :: Parser BrainfuckCommand
 superfuckCommandP = moveP
                 <|> addP
                 <|> printP
@@ -41,33 +41,33 @@ superfuckCommandP = moveP
 
 -- | General parser for compensating fields, used to define the parser for Add
 --   and Move.
-compensatingP :: (Int -> SuperfuckCommand) -- ^ Data constructor
+compensatingP :: (Int -> BrainfuckCommand) -- ^ Data constructor
               -> Char                      -- ^ "+1" character (i.e. > and +)
               -> Char                      -- ^ "-1" character (i.e. < and -)
-              -> Parser SuperfuckCommand
+              -> Parser BrainfuckCommand
 compensatingP c more less = c . sum <$> many1 (moreP <|> lessP)
       where moreP = char more *> pure   1
             lessP = char less *> pure (-1)
 
 
 
-moveP :: Parser SuperfuckCommand
+moveP :: Parser BrainfuckCommand
 moveP = compensatingP Move '>' '<'
 
 
 
-addP :: Parser SuperfuckCommand
+addP :: Parser BrainfuckCommand
 addP = compensatingP Add '+' '-'
 
 
 
-printP :: Parser SuperfuckCommand
+printP :: Parser BrainfuckCommand
 printP = Print . sum <$> many1 dotP
       where dotP = char '.' *> pure 1
 
 
 
-readP :: Parser SuperfuckCommand
+readP :: Parser BrainfuckCommand
 readP = Read <$ char ','
 
 
@@ -77,5 +77,5 @@ commentP = many1 (noneOf "+-<>,.[]") *> pure ()
 
 
 
-loopP :: Parser SuperfuckCommand
+loopP :: Parser BrainfuckCommand
 loopP = Loop <$> between (char '[') (char ']') superfuckP

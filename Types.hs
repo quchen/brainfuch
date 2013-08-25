@@ -1,6 +1,6 @@
 module Types  (
-        SuperfuckCommand(..)
-      , SuperfuckSource(..)
+        BrainfuckCommand(..)
+      , BrainfuckSource(..)
 ) where
 
 import Data.Word
@@ -8,21 +8,21 @@ import Data.Word
 
 -- | A higher-level representation of Brainfuck code; allows combination of
 --   successive similar commands into one, and is easier to optimize.
-data SuperfuckCommand = Move Int
+data BrainfuckCommand = Move Int
                       | Add Int
                       | Print Word
                       | Read
-                      | Loop SuperfuckSource
+                      | Loop BrainfuckSource
 
-data SuperfuckSource = SFSource [SuperfuckCommand]
+data BrainfuckSource = SFSource [BrainfuckCommand]
 
-instance Show SuperfuckSource where
+instance Show BrainfuckSource where
       show (SFSource xs) = concatMap show xs
 
 
 -- Adds the syntax "x(n)" for the command "x" appearing repeatedly, for example
 -- "+3" = "+++".
-instance Show SuperfuckCommand where
+instance Show BrainfuckCommand where
       show (Move  i) = showMulti i $ if i < 0 then '<' else '>'
       show (Add   n) = showMulti n $ if n < 0 then '-' else '+'
       show (Print 0) = ""
