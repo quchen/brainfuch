@@ -12,21 +12,13 @@ import Types
 
 
 parseBrainfuck :: String -> Either ParseError BrainfuckSource
-parseBrainfuck = fmap dropRedundant . parse superfuckP "Brainfuck source parser"
+parseBrainfuck = parse superfuckP "Brainfuck source parser"
 
-
--- / Removes redundant statements like `Add 0`.
-dropRedundant :: BrainfuckSource -> BrainfuckSource
-dropRedundant (SFSource xs) = SFSource $ mapMaybe dropRedundant' xs
-      where dropRedundant' (Add  0)  = Nothing
-            dropRedundant' (Move 0)  = Nothing
-            dropRedundant' (Loop ys) = Just . Loop $ dropRedundant ys
-            dropRedundant' ys        = Just ys
 
 
 
 superfuckP :: Parser BrainfuckSource
-superfuckP = SFSource . concat <$> do
+superfuckP = BFSource . concat <$> do
       optional commentP
       many $ many1 superfuckCommandP <* optional commentP
 
@@ -39,30 +31,23 @@ superfuckCommandP = moveP
                 <|> readP
                 <|> loopP
 
--- | General parser for compensating fields, used to define the parser for Add
---   and Move.
-compensatingP :: (Int -> BrainfuckCommand) -- ^ Data constructor
-              -> Char                      -- ^ "+1" character (i.e. > and +)
-              -> Char                      -- ^ "-1" character (i.e. < and -)
-              -> Parser BrainfuckCommand
-compensatingP c more less = c . sum <$> many1 (moreP <|> lessP)
-      where moreP = char more *> pure   1
-            lessP = char less *> pure (-1)
-
-
 
 moveP :: Parser BrainfuckCommand
-moveP = compensatingP Move '>' '<'
+moveP = Move <$> (rightP <|> leftP)
+      where rightP = char '>' *> pure   1
+            leftP  = char '<' *> pure (-1)
 
 
 
 addP :: Parser BrainfuckCommand
-addP = compensatingP Add '+' '-'
+addP = Add <$> (plusP <|> minusP)
+      where plusP  = char '+' *> pure   1
+            minusP = char '-' *> pure (-1)
 
 
 
 printP :: Parser BrainfuckCommand
-printP = Print . sum <$> many1 dotP
+printP = Print <$> dotP
       where dotP = char '.' *> pure 1
 
 

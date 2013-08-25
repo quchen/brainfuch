@@ -4,8 +4,9 @@ module Brainfuch (run) where
 
 import Brainfuck
 import Parser
+import Optimize
 
 
 -- | Runs a given Brainfuck program.
 run :: String -> IO ()
-run = either print runBrainfuck . parseBrainfuck
+run = either print (runBrainfuck . optimize) . parseBrainfuck

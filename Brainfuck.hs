@@ -17,14 +17,6 @@ import Types
 
 
 
--- TODO: Add optimizer again. The parser will remove one pass of redundant
---       operations only, so "+-.+-.+-." will result in "...", but should be
---       ".3".
---
---       - Remove loops that are never entered (beginning of file, or loop
---         immediately after another loop)
-
-
 
 
 -- | Executes a Brainfuck program (as given; if optimizations are desired apply
@@ -51,8 +43,8 @@ run :: BrainfuckSource        -- ^ Instruction tape
     -> Tape S.Stream Int      -- ^ Data tape
     -> IO (Tape S.Stream Int) -- ^ Tape after termination
 
-run (SFSource []    ) tape               = return tape
-run (SFSource (x:xs)) tape@(Tape l !p r) = let rest = SFSource xs
+run (BFSource []    ) tape               = return tape
+run (BFSource (x:xs)) tape@(Tape l !p r) = let rest = BFSource xs
                                            in  case x of
 
       Move n -> run rest (abs n `times` f $ tape)

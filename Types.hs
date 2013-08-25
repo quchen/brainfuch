@@ -13,11 +13,14 @@ data BrainfuckCommand = Move Int
                       | Print Word
                       | Read
                       | Loop BrainfuckSource
+                      deriving (Eq)
 
-data BrainfuckSource = SFSource [BrainfuckCommand]
+data BrainfuckSource = BFSource [BrainfuckCommand]
+      deriving (Eq)
 
 instance Show BrainfuckSource where
-      show (SFSource xs) = concatMap show xs
+      show (BFSource []) = "(empty)"
+      show (BFSource xs) = concatMap show xs
 
 
 -- Adds the syntax "x(n)" for the command "x" appearing repeatedly, for example
