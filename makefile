@@ -1,8 +1,11 @@
+SRC = src
+ELF = brainfuch
+
 all :
-	ghc -O2 Main.hs -o brainfuch
-	strip -s brainfuch
+	ghc -O2 src/Main.hs -o $(ELF) -i$(SRC)
+	strip -s $(ELF)
 
 clean :
-	rm -rf *.o
-	rm -rf *.hi
-	rm -f brainfuch
+	rm -f $(ELF)
+	rm -f src/*.o
+	rm -f src/*.hi

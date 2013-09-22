@@ -76,6 +76,6 @@ commit (Just cache      ) = (cache :) -- Happy closing parenthesis
 
 -- | Drops loops at the beginning of the source as the pivot is zero and the
 --   loop won't ever be entered.
-trimBeginningLoop (SFSource xs) = SFSource $ dropWhile isLoop xs
+trimBeginningLoop (BFSource xs) = BFSource $ dropWhile isLoop xs
       where isLoop (Loop _) = True
             isLoop _        = False
