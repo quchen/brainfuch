@@ -10,15 +10,15 @@ import Types
 --   Note: don't apply this to subroutines recursively, as it will drop loops at
 --   the code's beginning.
 optimize :: BrainfuckSource -> BrainfuckSource
-optimize = iterateUntilFix $ simplify . trimBeginningLoop
+optimize = applyUntilFix $ trimBeginningLoop . simplify
 
 
 
 -- | Apply endomorphism until fixed point is reached
-iterateUntilFix :: (Eq a) => (a -> a) -> a -> a
-iterateUntilFix f x | x == fx   =  x
-                    | otherwise = iterateUntilFix f fx
-                    where fx = f x
+applyUntilFix :: (Eq a) => (a -> a) -> a -> a
+applyUntilFix f x | x == fx   =  x
+                  | otherwise = applyUntilFix f fx
+                  where fx = f x
 
 
 -- | Runs one simplification pass over the source.
@@ -40,8 +40,6 @@ simplifyStep :: BrainfuckCommand                               -- ^ New command
              ->  Maybe BrainfuckCommand                        -- ^ Cache
              -> [BrainfuckCommand]                           -- ^ Committed code
 
-
-
 -- Combine multiple 'Add'
 simplifyStep     (Add n) acc (Just (Add m)) = acc (Just . Add $! n+m)
 simplifyStep add@(Add _) acc cache          = commit cache $ acc (Just add)
@@ -60,6 +58,7 @@ simplifyStep Read acc cache = commit cache $ acc (Just Read)
 -- Ignore all but the first successive loop
 simplifyStep      (Loop _) acc cache@(Just (Loop _)) = acc cache
 simplifyStep loop@(Loop _) acc cache = commit cache $ acc (Just loop)
+
 
 
 -- | Commits a command. This is a synonym for (:), but will drop 'Add 0',
