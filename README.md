@@ -12,8 +12,3 @@ Brainfuck interpreter written in Haskell. Features:
 The core part was written in roughly an hour without any prior knowledge of Brainfuck or interpretation of procedural languages. Turns out Brainfuck is really as simple as they all say.
 
 Note that the current version is probably not very performant. (Haven't compared it to anything though.)
-
-Licence
--------
-
-WTFPL. http://www.wtfpl.net/txt/copying/
