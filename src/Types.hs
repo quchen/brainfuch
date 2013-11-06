@@ -1,9 +1,12 @@
-module Types  (
-        BrainfuckCommand(..)
-      , BrainfuckSource(..)
-) where
+{-# LANGUAGE GADTs #-}
+
+module Types where
 
 import Data.Word
+import Control.Monad
+import Control.Applicative
+import Data.Functor
+
 
 
 -- | A higher-level representation of Brainfuck code; allows combination of
@@ -45,3 +48,38 @@ showMulti n = showMulti' (abs n)
       where showMulti' 0 _ = ""
             showMulti' 1 c = [c]
             showMulti' k c = c : show k
+
+
+
+data FreeM f a = Pure a | Roll (f (FreeM f a))
+
+instance (Functor f) => Functor (FreeM f) where
+      fmap = liftM
+
+instance (Functor f) => Applicative (FreeM f) where
+      pure = return
+      (<*>) = ap
+
+instance (Functor f) => Monad (FreeM f) where
+      return = Pure
+      Pure x >>= f = f x
+      Roll x >>= f = Roll ((>>= f) <$> x)
+
+-- | A single operational instruction for a running Brainfuck program.
+data Instruction a where
+      PrintChar ::  Char -> a  -> Instruction a
+      ReadChar  :: (Char -> a) -> Instruction a
+
+-- | Chain of instructions.
+type Program a = FreeM Instruction a
+
+instance Functor Instruction where
+      fmap f (PrintChar c k) = PrintChar c (f k)
+      fmap f (ReadChar    k) = ReadChar    (f . k)
+
+printChar :: Char -> Program ()
+printChar c = Roll (PrintChar c (Pure ()))
+
+readChar :: Program Char
+readChar = Roll (ReadChar Pure)
+

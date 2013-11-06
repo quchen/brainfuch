@@ -3,7 +3,7 @@ module Main (main) where
 import System.Environment
 import System.IO
 
-import qualified Brainfuch as Brainfuck
+import qualified Brainfuch
 
 
 -- | Read from STDIN when no argument is specified, otherwise
@@ -15,8 +15,8 @@ main = do
       case args of
             ("--help":_) -> showHelp
             ("-h":_)     -> showHelp
-            []           -> getContents   >>= Brainfuck.run
-            (file:_)     -> readFile file >>= Brainfuck.run
+            []           -> getContents   >>= Brainfuch.runIO
+            (file:_)     -> readFile file >>= Brainfuch.runIO
 
 
 showHelp :: IO ()
