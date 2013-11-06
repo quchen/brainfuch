@@ -1,5 +1,3 @@
-{-# LANGUAGE FlexibleInstances #-}
-
 module Stream (
       Stream(..)
       , focusLeft
