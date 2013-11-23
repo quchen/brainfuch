@@ -43,10 +43,9 @@ times n f = appEndo . mconcat . map Endo $ replicate n f
 compile :: BrainfuckSource             -- ^ Instruction tape
         -> Tape S.Stream Int           -- ^ Data tape
         -> Program (Tape S.Stream Int) -- ^ Tape after termination
-
 compile (BFSource []    ) tape               = return tape
 compile (BFSource (x:xs)) tape@(Tape l !p r) = let rest = BFSource xs
-                                           in  case x of
+                                               in  case x of
 
       Move n -> compile rest (abs n `times` f $ tape)
             where f | n < 0     = S.focusLeft
@@ -65,10 +64,9 @@ compile (BFSource (x:xs)) tape@(Tape l !p r) = let rest = BFSource xs
 
 
 
-compileLoop :: BrainfuckSource             -- ^ Instruction tape
+compileLoop :: BrainfuckSource             -- ^ Loop body
             -> Tape S.Stream Int           -- ^ Data tape
             -> Program (Tape S.Stream Int) -- ^ Tape after the loop terminates
-
 compileLoop body tape = do
       tape'@(Tape _ p _) <- compile body tape
       case p of
