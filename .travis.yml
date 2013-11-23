@@ -1,7 +1,7 @@
 language: haskell
 
 before_install: echo "before_install" && true
-install:        echo "install"        && true
+install:        cabal install dlist
 before_script:  echo "before_script"  && true
 script:         make fast
 after_success:  ./brainfuch "bf_example_source_files/helloworld.bf"
