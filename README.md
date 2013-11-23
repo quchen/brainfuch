@@ -1,6 +1,8 @@
 Brainfuch
 =========
 
+[![Build Status](https://travis-ci.org/quchen/brainfuch.png?branch=master)](https://travis-ci.org/quchen/brainfuch)
+
 Brainfuck interpreter written in Haskell. Features:
 
 - Infinite data tape in both directions (thanks to laziness)

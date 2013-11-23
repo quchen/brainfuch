@@ -1,0 +1,9 @@
+language: haskell
+
+before_install: echo "before_install" && true
+install:        echo "install"        && true
+before_script:  echo "before_script"  && true
+script:         make fast
+after_success:  echo "after_success"  && true
+after_failure:  echo "after_failure"  && true
+after_script:   echo "after_script"   && true
