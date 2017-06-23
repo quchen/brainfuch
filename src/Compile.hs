@@ -1,21 +1,16 @@
 {-# LANGUAGE BangPatterns #-}
 
-
 module Compile (
       compileBF
 ) where
 
-import Data.Char (chr, ord)
-import Data.Monoid
 import Control.Monad
+import Data.Char     (chr, ord)
+import Data.Monoid
 
 import qualified Stream as S
-import Tape
-import Utilities
-import Types
-
-
-
+import           Tape
+import           Types
 
 
 
@@ -26,15 +21,11 @@ compileBF = void . flip compile S.emptyTape
 
 
 
-
-
 -- | Apply an endomorphism multiple times
 times :: Int
       -> (a -> a)
       -> (a -> a)
 times n f = appEndo . mconcat . map Endo $ replicate n f
-
-
 
 
 
@@ -53,7 +44,7 @@ compile (BFSource (x:xs)) tape@(Tape l !p r) = let rest = BFSource xs
 
       Add n -> compile rest (Tape l (p+n) r)
 
-      Print n -> do replicateM_ (fromIntegral n) (printChar (chr $ p `mod` 2^8))
+      Print n -> do replicateM_ (fromIntegral n) (printChar (chr $ p `mod` 2^(8 :: Int)))
                     compile rest tape
 
       Read -> do c <- readChar

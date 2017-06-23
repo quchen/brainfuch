@@ -2,10 +2,7 @@
 
 module Types where
 
-import Data.Word
 import Control.Monad
-import Control.Applicative
-import Data.Functor
 
 
 
@@ -25,7 +22,6 @@ instance Show BrainfuckSource where
       show (BFSource []) = "(empty)"
       show (BFSource xs) = concatMap show xs
 
-
 -- Adds the syntax "x(n)" for the command "x" appearing repeatedly, for example
 -- "+3" = "+++".
 instance Show BrainfuckCommand where
@@ -35,8 +31,6 @@ instance Show BrainfuckCommand where
       show (Print n) = showMulti n '.'
       show  Read     = ","
       show (Loop  b) = '[' : show b ++ "]"
-
-
 
 -- | Used to abbreviate multiple occurrences of identical symbols, i.e. the
 --   "(n)" syntax.
@@ -82,4 +76,3 @@ printChar c = Roll (PrintChar c (Pure ()))
 
 readChar :: Program Char
 readChar = Roll (ReadChar Pure)
-

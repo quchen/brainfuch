@@ -1,17 +1,18 @@
 -- | Frontend for the Brainfuck interpreter.
 
+{-# LANGUAGE FlexibleContexts #-}
+
 module Brainfuch (runIO, runString) where
 
 import Compile  as C
-import Parser   as P
 import Optimize as O
+import Parser   as P
 import Types    as T
 
-import Data.DList
 import Control.Monad.Writer
-import System.IO as IO
+import Data.DList
+import System.IO            as IO
 
-import Debug.Trace
 
 
 -- | Runs a given Brainfuck program in IO.
