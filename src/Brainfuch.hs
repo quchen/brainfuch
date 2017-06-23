@@ -2,21 +2,26 @@
 
 {-# LANGUAGE FlexibleContexts #-}
 
-module Brainfuch (runIO, runString) where
+
+
+module Brainfuch (runIO, runText) where
+
+import           Control.Monad.Writer
+import           Data.DList
+import           Data.Text            (Text)
+import qualified Data.Text            as T
+import qualified Data.Text.Lazy       as TL
+import           System.IO            as IO
 
 import Compile  as C
 import Optimize as O
 import Parser   as P
 import Types    as T
 
-import Control.Monad.Writer
-import Data.DList
-import System.IO            as IO
-
 
 
 -- | Runs a given Brainfuck program in IO.
-runIO :: String  -- ^ Source
+runIO :: Text  -- ^ Source
       -> IO ()
 runIO = runIO' . prepare
   where
@@ -25,22 +30,23 @@ runIO = runIO' . prepare
         ReadChar    cont -> IO.getChar >>= runIO' . cont
         PrintChar c cont -> IO.putChar c >> runIO' cont
 
-runString :: String
-          -> String
-          -> String
-runString input source = (toList . execWriter . runW input . prepare) source
+runText :: Text
+          -> Text
+          -> TL.Text
+runText input source = (TL.pack . toList . execWriter . runW input . prepare) source
 
   where -- Run using Writer+DList
 
     runW _ (Pure _) = pure ()
-    runW (i:is) (Roll (ReadChar cont)) = runW is (cont i)
+    runW is (Roll (ReadChar cont))
+        | Just (i,is') <- T.uncons is = runW is' (cont i)
+        | otherwise = tell (fromList "<unexpected end of input>")
     runW is (Roll (PrintChar c cont)) = do
           tell (singleton c)
           runW is cont
-    runW [] (Roll (ReadChar _cont)) = tell (fromList "<unexpected end of input>")
 
-prepare :: String -> Program ()
-prepare s = (C.compileBF . O.optimize . unsafeRight . P.parseBrainfuck) s
+prepare :: Text -> Program ()
+prepare s = (C.compileBF . O.optimize . unsafeFromJust . P.parseBrainfuck) s
   where
-    unsafeRight (Right x) = x
-    unsafeRight (Left err)  = error ("unsafeRight called on Left(" ++ show err ++ ")")
+    unsafeFromJust (Just x) = x
+    unsafeFromJust Nothing  = error "unsafeFromJust called on Nothing"
