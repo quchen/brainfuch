@@ -1,9 +1,46 @@
-language: haskell
+# Stack's standard Travis config, taken from
+# http://docs.haskellstack.org/en/stable/GUIDE.html#travis-with-caching
 
-before_install: echo "before_install" && true
-install:        cabal install dlist
-before_script:  echo "before_script"  && true
-script:         make fast
-after_success:  ./brainfuch "bf_example_source_files/helloworld.bf"
-after_failure:  echo "after_failure"  && true
-after_script:   echo "after_script"   && true
+
+
+# Use new container infrastructure to enable caching
+sudo: false
+
+
+
+# Choose a lightweight base image; we provide our own build tools.
+language: c
+
+
+
+# GHC depends on GMP. You can add other dependencies here as well.
+addons:
+    apt:
+        packages:
+            - libgmp-dev
+
+
+
+before_install:
+    # Download and unpack the stack executable
+    - mkdir -p ~/.local/bin
+    - export PATH=$HOME/.local/bin:$PATH
+    - >
+      travis_retry curl -L https://www.stackage.org/stack/linux-x86_64
+      | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+
+    - stack --no-terminal setup
+
+
+
+script:
+    - >
+      travis_wait stack --no-terminal test
+      $STACK_BUILD_ARGS
+
+
+
+# Caching so the next build will be fast too.
+cache:
+    directories:
+        - $HOME/.stack
