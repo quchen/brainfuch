@@ -69,7 +69,7 @@ anyChar = Parser (\input -> case T.uncons input of
     Nothing -> []
     Just (c,cs) -> [(c, cs)] )
 
-between :: Parser a -> Parser b -> Parser c -> Parser c
+between :: Parser left -> Parser right -> Parser body -> Parser body
 between before after p = do
     _ <- before
     result <- p
