@@ -5,4 +5,4 @@ module Tape (Tape (..)) where
 data Tape c a = Tape (c a) a (c a)
 
 instance (Functor f) => Functor (Tape f) where
-      fmap f (Tape l p r) = Tape (fmap f l) (f p) (fmap f r)
+    fmap f (Tape l p r) = Tape (fmap f l) (f p) (fmap f r)

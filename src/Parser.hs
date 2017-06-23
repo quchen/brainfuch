@@ -11,10 +11,10 @@ import Types
 
 
 parseBrainfuck :: String -> Either ParseError BrainfuckSource
-parseBrainfuck = parse sourceP "Brainfuck source parser"
+parseBrainfuck = parse (sourceP <* eof) "Brainfuck source parser"
 
 sourceP :: Parser BrainfuckSource
-sourceP = fmap BFSource (many1 commandP)
+sourceP = fmap BFSource (commentP *> many1 (commandP <* commentP))
 
 commandP :: Parser BrainfuckCommand
 commandP = asum
@@ -28,6 +28,7 @@ commandP = asum
     , Read      <$ char ','
 
     , Loop      <$> between (char '[') (char ']') sourceP
-
-    , many1 (noneOf "+-<>,.[]") *> commandP
     ]
+
+commentP :: Parser ()
+commentP = skipMany (noneOf "+-<>,.[]")

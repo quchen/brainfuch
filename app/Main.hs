@@ -2,9 +2,9 @@ module Main (main) where
 
 
 
+import Data.List
 import System.Environment
 import System.IO
-import Data.List
 
 import qualified Brainfuch
 
@@ -20,7 +20,7 @@ main = do
             ("--help":_)   -> showHelp
             ("-h":_)       -> showHelp
             []             -> getContents >>= Brainfuch.runIO
-            xs@((':':_):_) -> print (fromText xs)
+            xs@((':':_):_) -> print (unsafeFromText xs)
             (file:_)       -> readFile file >>= Brainfuch.runIO
 
 showHelp :: IO ()
@@ -30,9 +30,12 @@ showHelp = do
       putStrLn "Read from STDIN:        ./brainfuch"
 
 -- | Used to run brainfuck programs given using only command line parameters.
-fromText xs =
+unsafeFromText :: [String] -> String
+unsafeFromText xs =
       let (source, input) = splitOn ':' . drop 1 $ intercalate " " xs
       in  Brainfuch.runString input source
 
 -- | Split a list on a certain element. The splitting element is dropped.
-splitOn c xs = (takeWhile (/= c) xs, drop 1 $ dropWhile (/= c) xs)
+splitOn :: Eq a => a -> [a] -> ([a], [a])
+splitOn c xs = let (before, _:after) = break (== c) xs
+               in (before, after)

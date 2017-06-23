@@ -25,4 +25,5 @@ focusLeft (Tape (l :| ls) p rs) = Tape ls l (p :| rs)
 -- | Tape filled with zeros
 emptyTape :: Tape Stream Int
 emptyTape = Tape zeros 0 zeros
-      where zeros = 0 :| zeros
+  where
+    zeros = 0 :| zeros

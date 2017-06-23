@@ -34,24 +34,24 @@ times n f = appEndo . mconcat . map Endo $ replicate n f
 compile :: BrainfuckSource             -- ^ Instruction tape
         -> Tape S.Stream Int           -- ^ Data tape
         -> Program (Tape S.Stream Int) -- ^ Tape after termination
-compile (BFSource []    ) tape               = return tape
+compile (BFSource []    ) tape               = pure tape
 compile (BFSource (x:xs)) tape@(Tape l !p r) = let rest = BFSource xs
                                                in  case x of
 
-      Move n -> compile rest (abs n `times` f $ tape)
-            where f | n < 0     = S.focusLeft
-                    | otherwise = S.focusRight
+    Move n -> compile rest (abs n `times` f $ tape)
+      where f | n < 0     = S.focusLeft
+              | otherwise = S.focusRight
 
-      Add n -> compile rest (Tape l (p+n) r)
+    Add n -> compile rest (Tape l (p+n) r)
 
-      Print n -> do replicateM_ (fromIntegral n) (printChar (chr $ p `mod` 2^(8 :: Int)))
-                    compile rest tape
+    Print n -> do replicateM_ (fromIntegral n) (printChar (chr $ p `mod` 2^(8 :: Int)))
+                  compile rest tape
 
-      Read -> do c <- readChar
-                 compile rest (Tape l (ord c) r)
+    Read -> do c <- readChar
+               compile rest (Tape l (ord c) r)
 
-      Loop body | p == 0    -> compile rest tape  -- ignore entire loop
-                | otherwise -> compileLoop body tape >>= compile rest
+    Loop body | p == 0    -> compile rest tape  -- ignore entire loop
+              | otherwise -> compileLoop body tape >>= compile rest
 
 
 
@@ -59,7 +59,7 @@ compileLoop :: BrainfuckSource             -- ^ Loop body
             -> Tape S.Stream Int           -- ^ Data tape
             -> Program (Tape S.Stream Int) -- ^ Tape after the loop terminates
 compileLoop body tape = do
-      tape'@(Tape _ p _) <- compile body tape
-      case p of
-            0 -> return tape'
-            _ -> compileLoop body tape'
+    tape'@(Tape _ p _) <- compile body tape
+    case p of
+        0 -> pure tape'
+        _ -> compileLoop body tape'
