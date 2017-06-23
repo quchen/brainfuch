@@ -25,5 +25,4 @@ main = do
 showHelp :: IO ()
 showHelp = do
       putStrLn "Read from file:         ./brainfuch <source>"
-      putStrLn "Read from command line: ./brainfuch :<source>:<program input>"
       putStrLn "Read from STDIN:        ./brainfuch"

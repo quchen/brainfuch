@@ -35,7 +35,7 @@ commandP = asum
 commentP :: Parser ()
 commentP = many (noneOf "+-<>,.[]") *> pure ()
 
-data Parser a = Parser { runParser :: Text -> [(a, Text)] }
+newtype Parser a = Parser { runParser :: Text -> [(a, Text)] }
 
 parseUnique :: Parser a -> Text -> Maybe a
 parseUnique p input = case [result | (result, rest) <- runParser p input, T.null rest] of
@@ -65,9 +65,9 @@ instance Alternative Parser where
     p1 <|> p2 = Parser (\input -> runParser p1 input ++ runParser p2 input)
 
 anyChar :: Parser Char
-anyChar = Parser $ \input -> case T.uncons input of
+anyChar = Parser (\input -> case T.uncons input of
     Nothing -> []
-    Just (c,cs) -> [(c, cs)]
+    Just (c,cs) -> [(c, cs)] )
 
 between :: Parser a -> Parser b -> Parser c -> Parser c
 between before after p = do
@@ -85,5 +85,5 @@ satisfy p = do
 char :: Char -> Parser Char
 char x = satisfy (== x)
 
-noneOf :: [Char] -> Parser Char
+noneOf :: String -> Parser Char
 noneOf forbidden = satisfy (`notElem` forbidden)
