@@ -10,7 +10,7 @@ import Types
 --   Note: don't apply this to subroutines recursively, as it will drop loops at
 --   the code's beginning.
 optimize :: BrainfuckSource -> BrainfuckSource
-optimize = applyUntilFix $ trimBeginningLoop . simplify
+optimize = applyUntilFix (trimBeginningLoop . simplify)
 
 
 
@@ -23,8 +23,8 @@ applyUntilFix f x | x == fx   =  x
 
 -- | Runs one simplification pass over the source.
 simplify :: BrainfuckSource -> BrainfuckSource
-simplify (BFSource xs) = BFSource $ foldr simplifyStep (`commit` []) xs Nothing
-                                                -- ^ commits remaining cache
+simplify (BFSource xs) = BFSource (foldr simplifyStep (`commit` []) xs Nothing)
+                                                     -- ^ commits remaining cache
 
 
 -- | Used as a folding function. Walks over the list and retains a cache of the
@@ -42,22 +42,22 @@ simplifyStep :: BrainfuckCommand                               -- ^ New command
 
 -- Combine multiple 'Add'
 simplifyStep     (Add n) acc (Just (Add m)) = acc (Just . Add $! n+m)
-simplifyStep add@(Add _) acc cache          = commit cache $ acc (Just add)
+simplifyStep add@(Add _) acc cache          = commit cache (acc (Just add))
 
 -- Combine multiple 'Move'
 simplifyStep      (Move n) acc (Just (Move m)) = acc (Just . Move $! n+m)
-simplifyStep move@(Move _) acc cache           = commit cache $ acc (Just move)
+simplifyStep move@(Move _) acc cache           = commit cache (acc (Just move))
 
 -- Combine multiple 'Print'
 simplifyStep     (Print n) acc (Just (Print m)) = acc (Just . Print $! n+m)
-simplifyStep put@(Print _) acc cache            = commit cache $ acc (Just put)
+simplifyStep put@(Print _) acc cache            = commit cache (acc (Just put))
 
 -- Read is not opzimized
-simplifyStep Read acc cache = commit cache $ acc (Just Read)
+simplifyStep Read acc cache = commit cache (acc (Just Read))
 
 -- Ignore all but the first successive loop
 simplifyStep      (Loop _) acc cache@(Just (Loop _)) = acc cache
-simplifyStep loop@(Loop _) acc cache = commit cache $ acc (Just loop)
+simplifyStep loop@(Loop _) acc cache = commit cache (acc (Just loop))
 
 
 
@@ -77,6 +77,6 @@ commit (Just cache      ) = (cache :) -- Happy closing parenthesis
 -- | Drops loops at the beginning of the source as the pivot is zero and the
 --   loop won't ever be entered.
 trimBeginningLoop :: BrainfuckSource -> BrainfuckSource
-trimBeginningLoop (BFSource xs) = BFSource $ dropWhile isLoop xs
+trimBeginningLoop (BFSource xs) = BFSource (dropWhile isLoop xs)
       where isLoop (Loop _) = True
             isLoop _        = False

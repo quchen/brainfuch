@@ -16,7 +16,7 @@ data BrainfuckCommand
     | Loop BrainfuckSource
     deriving (Eq)
 
-data BrainfuckSource = BFSource [BrainfuckCommand]
+newtype BrainfuckSource = BFSource [BrainfuckCommand]
     deriving (Eq)
 
 instance Show BrainfuckSource where
@@ -26,8 +26,8 @@ instance Show BrainfuckSource where
 -- Adds the syntax "x(n)" for the command "x" appearing repeatedly, for example
 -- "+3" = "+++".
 instance Show BrainfuckCommand where
-    show (Move  i) = showMulti i $ if i < 0 then '<' else '>'
-    show (Add   n) = showMulti n $ if n < 0 then '-' else '+'
+    show (Move  i) = showMulti i (if i < 0 then '<' else '>')
+    show (Add   n) = showMulti n (if n < 0 then '-' else '+')
     show (Print 0) = ""
     show (Print n) = showMulti n '.'
     show  Read     = ","

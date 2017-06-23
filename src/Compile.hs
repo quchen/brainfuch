@@ -25,7 +25,7 @@ compileBF = void . flip compile S.emptyTape
 times :: Int
       -> (a -> a)
       -> (a -> a)
-times n f = appEndo . mconcat . map Endo $ replicate n f
+times n f = (appEndo . mconcat . map Endo) (replicate n f)
 
 
 
@@ -38,13 +38,13 @@ compile (BFSource []    ) tape               = pure tape
 compile (BFSource (x:xs)) tape@(Tape l !p r) = let rest = BFSource xs
                                                in  case x of
 
-    Move n -> compile rest (abs n `times` f $ tape)
+    Move n -> compile rest ((abs n `times` f) tape)
       where f | n < 0     = S.focusLeft
               | otherwise = S.focusRight
 
     Add n -> compile rest (Tape l (p+n) r)
 
-    Print n -> do replicateM_ (fromIntegral n) (printChar (chr $ p `mod` 2^(8 :: Int)))
+    Print n -> do replicateM_ (fromIntegral n) (printChar (chr (p `mod` 2^(8 :: Int))))
                   compile rest tape
 
     Read -> do c <- readChar
