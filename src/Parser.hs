@@ -2,8 +2,8 @@ module Parser (parseBrainfuck) where
 
 
 
-import Control.Applicative hiding (many, optional)
-import Text.Parsec         hiding ((<|>))
+import Data.Foldable
+import Text.Parsec        hiding ((<|>))
 import Text.Parsec.String
 
 import Types
@@ -11,39 +11,23 @@ import Types
 
 
 parseBrainfuck :: String -> Either ParseError BrainfuckSource
-parseBrainfuck = parse superfuckP "Brainfuck source parser"
+parseBrainfuck = parse sourceP "Brainfuck source parser"
 
-superfuckP :: Parser BrainfuckSource
-superfuckP = BFSource . concat <$> do
-      optional commentP
-      many $ many1 superfuckCommandP <* optional commentP
+sourceP :: Parser BrainfuckSource
+sourceP = fmap BFSource (many1 commandP)
 
-superfuckCommandP :: Parser BrainfuckCommand
-superfuckCommandP = moveP
-                <|> addP
-                <|> printP
-                <|> readP
-                <|> loopP
+commandP :: Parser BrainfuckCommand
+commandP = asum
+    [ Move   1  <$ char '>'
+    , Move (-1) <$ char '<'
 
-moveP :: Parser BrainfuckCommand
-moveP = Move <$> (rightP <|> leftP)
-      where rightP = char '>' *> pure   1
-            leftP  = char '<' *> pure (-1)
+    , Add    1  <$ char '+'
+    , Add  (-1) <$ char '-'
 
-addP :: Parser BrainfuckCommand
-addP = Add <$> (plusP <|> minusP)
-      where plusP  = char '+' *> pure   1
-            minusP = char '-' *> pure (-1)
+    , Print  1  <$ char '.'
+    , Read      <$ char ','
 
-printP :: Parser BrainfuckCommand
-printP = Print <$> dotP
-      where dotP = char '.' *> pure 1
+    , Loop      <$> between (char '[') (char ']') sourceP
 
-readP :: Parser BrainfuckCommand
-readP = Read <$ char ','
-
-commentP :: Parser ()
-commentP = many1 (noneOf "+-<>,.[]") *> pure ()
-
-loopP :: Parser BrainfuckCommand
-loopP = Loop <$> between (char '[') (char ']') superfuckP
+    , many1 (noneOf "+-<>,.[]") *> commandP
+    ]
